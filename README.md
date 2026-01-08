@@ -32,5 +32,4 @@ For this MVP, we intentionally used a rule-based approach to clearly demonstrate
 - Backend: Python (Flask)  
 - Voice Input:** Browser Speech API (MVP)  
 - AI (Planned):Azure OpenAI  
-  Demo Video:
-  https://www.loom.com/share/1aad5d7b2c4a49fd93a8d8f7a73de117
+  Demo Video: https://www.loom.com/share/1aad5d7b2c4a49fd93a8d8f7a73de117
