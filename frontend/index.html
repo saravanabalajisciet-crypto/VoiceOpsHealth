@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<title>VoiceOps Health</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:"Segoe UI",system-ui;
+  background:radial-gradient(circle at top,#020617,#000);
+  color:#e5e7eb;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.container{width:420px;text-align:center}
+
+h1{color:#22d3ee;margin-bottom:6px}
+.subtitle{color:#94a3b8;margin-bottom:26px;font-size:14px}
+
+.card{
+  background:rgba(15,23,42,.65);
+  backdrop-filter:blur(18px);
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:18px;
+  box-shadow:0 0 25px rgba(34,211,238,.15);
+}
+
+.card h3{color:#22d3ee;text-align:left;margin-bottom:12px}
+
+input{
+  width:100%;
+  padding:12px;
+  margin-bottom:12px;
+  background:#020617;
+  border:1px solid rgba(34,211,238,.25);
+  border-radius:12px;
+  color:white;
+  font-size:15px;
+}
+
+input::placeholder{color:#64748b}
+
+button{
+  padding:14px 22px;
+  border:none;
+  border-radius:999px;
+  background:#22d3ee;
+  color:#020617;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 0 20px rgba(34,211,238,.5);
+}
+
+button:disabled{opacity:.6}
+
+.status{margin-top:8px;color:#94a3b8;font-size:13px}
+
+.output{
+  background:#020617;
+  padding:14px;
+  border-radius:12px;
+  font-size:14px;
+  text-align:left;
+  min-height:50px;
+}
+
+.report{display:none;text-align:left}
+
+.report h4{color:#22d3ee;margin-bottom:10px}
+
+.item{
+  background:#020617;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  border:1px solid rgba(34,211,238,.2);
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>VoiceOps Health</h1>
+<div class="subtitle">Hospital Voice-Based Patient Intake</div>
+
+<div class="card">
+  <h3>Patient Details</h3>
+  <input id="name" placeholder="Patient Name">
+  <input id="age" type="number" placeholder="Age">
+</div>
+
+<button id="mic">🎤 Speak</button>
+<div class="status" id="status">Idle</div>
+
+<div class="card">
+  <h3>System Output</h3>
+  <div class="output" id="output">Waiting for input...</div>
+
+  <div class="report" id="report">
+    <h4>Patient Report</h4>
+    <div class="item"><b>Name:</b> <span id="rName"></span></div>
+    <div class="item"><b>Age:</b> <span id="rAge"></span></div>
+    <div class="item"><b>Complaint:</b> <span id="rComplaint"></span></div>
+    <div id="rDetails"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const mic = document.getElementById("mic");
+const status = document.getElementById("status");
+const output = document.getElementById("output");
+const report = document.getElementById("report");
+
+const nameInput = document.getElementById("name");
+const ageInput = document.getElementById("age");
+
+const rName = document.getElementById("rName");
+const rAge = document.getElementById("rAge");
+const rComplaint = document.getElementById("rComplaint");
+const rDetails = document.getElementById("rDetails");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const rec = new SpeechRecognition();
+rec.lang = "ta-IN";
+rec.continuous = false;
+
+mic.onclick = () => {
+  if(!nameInput.value || !ageInput.value){
+    output.innerText="Please enter Name and Age first";
+    return;
+  }
+  mic.disabled=true;
+  status.innerText="Listening...";
+  rec.start();
+};
+
+rec.onresult = async e => {
+  mic.disabled=false;
+  status.innerText="Processing...";
+
+  const text = e.results[0][0].transcript;
+
+  const fd = new FormData();
+  fd.append("text", text);
+  fd.append("name", nameInput.value.trim());
+  fd.append("age", ageInput.value.trim());
+
+  const res = await fetch("http://localhost:5000/process",{
+    method:"POST",
+    body:fd
+  });
+
+  const data = await res.json();
+
+  if(data.type==="question"){
+    output.innerText=data.question;
+    speak(data.question);
+    status.innerText="Waiting...";
+  }else{
+    showReport(data.report);
+    status.innerText="Completed";
+  }
+};
+
+function showReport(r){
+  output.style.display="none";
+  report.style.display="block";
+
+  rName.innerText=r.patient.name;
+  rAge.innerText=r.patient.age;
+  rComplaint.innerText=r.complaint;
+
+  rDetails.innerHTML="";
+  Object.entries(r.details).forEach(([k,v])=>{
+    const d=document.createElement("div");
+    d.className="item";
+    d.innerHTML=`<b>${k.replace("_"," ")}:</b> ${v}`;
+    rDetails.appendChild(d);
+  });
+}
+
+function speak(text){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ta-IN";
+  speechSynthesis.speak(u);
+}
+</script>
+
+</body>
+</html>
